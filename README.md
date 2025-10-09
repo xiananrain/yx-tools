@@ -58,9 +58,10 @@ python3 cloudflare_speedtest.py
 ## 使用指南
 
 ### 1. 常规测速
-
+mac Linux
 ```bash
-python3 cloudflare_speedtest.py
+chmod 755 CloudflareSpeedTest
+./CloudflareSpeedTest
 ```
 
 选择功能：
