@@ -60,8 +60,8 @@ python3 cloudflare_speedtest.py
 ### 1. 常规测速
 mac Linux
 ```bash
-chmod 755 CloudflareSpeedTest
-./CloudflareSpeedTest
+chmod 755 可执行文件拽到终端回车
+可执行文件拽到终端回车
 ```
 
 选择功能：
