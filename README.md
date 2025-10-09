@@ -36,7 +36,8 @@
 ```bash
 # 克隆项目
 git clone https://github.com/byJoey/yx-tools.git
-cd cloudflare-speedtest
+cd yx-tools
+
 
 # 安装依赖
 pip install -r requirements.txt
