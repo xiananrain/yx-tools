@@ -482,10 +482,24 @@ def handle_proxy_mode():
         print("  - 可直接用于反代配置")
         print("  - 支持各种代理软件")
         print("  - 建议定期更新IP列表")
+        
+        # 直接开始测速
+        print("\n" + "=" * 50)
+        print("开始对反代IP列表进行测速...")
+        
+        # 使用默认测速参数
+        dn_count = "10"
+        speed_limit = "10" 
+        time_limit = "10"
+        
+        print(f"测速参数: 测试{dn_count}个IP, 速度下限{speed_limit}MB/s, 延迟上限{time_limit}ms")
+        
+        # 运行测速
+        run_speedtest_with_file("ips_ports.txt", dn_count, speed_limit, time_limit)
+        return None, None, None, None
     else:
         print("\n优选反代功能失败")
-    
-    return None, None, None, None
+        return None, None, None, None
 
 
 def handle_normal_mode():
@@ -680,8 +694,31 @@ def generate_proxy_list(result_file="result.csv", output_file="ips_ports.txt"):
         # 生成反代IP列表
         proxy_ips = []
         for row in rows:
-            ip = row.get('IP 地址', '').strip()
-            port = row.get('端口', '443').strip()
+            # 尝试多种可能的列名
+            ip = None
+            port = None
+            
+            # 查找IP列
+            for key in row.keys():
+                if 'ip' in key.lower() and '地址' in key:
+                    ip = row[key].strip()
+                    break
+                elif key.lower() == 'ip':
+                    ip = row[key].strip()
+                    break
+            
+            # 查找端口列
+            for key in row.keys():
+                if '端口' in key:
+                    port = row[key].strip()
+                    break
+                elif key.lower() == 'port':
+                    port = row[key].strip()
+                    break
+            
+            # 如果没有找到端口，使用默认值
+            if not port:
+                port = '443'
             
             if ip and port:
                 # 提取IP地址（去掉端口部分）
@@ -711,6 +748,45 @@ def generate_proxy_list(result_file="result.csv", output_file="ips_ports.txt"):
     except Exception as e:
         print(f"生成反代IP列表失败: {e}")
         return False
+
+
+def run_speedtest_with_file(ip_file, dn_count, speed_limit, time_limit):
+    """使用指定IP文件运行测速"""
+    try:
+        # 获取系统信息
+        os_type, arch_type = get_system_info()
+        exec_name = download_cloudflare_speedtest(os_type, arch_type)
+        
+        # 构建命令
+        cmd = [
+            f"./{exec_name}",
+            "-f", ip_file,
+            "-dn", dn_count,
+            "-sl", speed_limit,
+            "-tl", time_limit,
+            "-p", "20"  # 显示前20个结果
+        ]
+        
+        print(f"\n运行命令: {' '.join(cmd)}")
+        print("=" * 50)
+        
+        # 运行测速 - 实时显示输出
+        print("正在运行测速，请稍候...")
+        result = subprocess.run(cmd, text=True)
+        
+        if result.returncode == 0:
+            print("\n测速完成！")
+            print("结果已保存到 result.csv")
+        else:
+            print(f"\n测速失败，返回码: {result.returncode}")
+        
+        # 等待用户按键，不自动关闭窗口
+        input("\n按回车键退出...")
+        return 0
+        
+    except Exception as e:
+        print(f"运行测速失败: {e}")
+        return 1
 
 
 def run_speedtest(exec_name, cfcolo, dn_count, speed_limit, time_limit):
