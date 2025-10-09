@@ -14,6 +14,7 @@ import requests
 import json
 from pathlib import Path
 
+
 # Cloudflare 数据中心完整机场码映射
 # 数据来源：Cloudflare 官方数据中心列表
 AIRPORT_CODES = {
@@ -411,6 +412,84 @@ def display_preset_configs():
 
 def get_user_input():
     """获取用户输入参数"""
+    # 询问功能选择
+    print("\n功能选择:")
+    print("  1. 常规测速 - 测试指定机场码的IP速度")
+    print("  2. 优选反代 - 从CSV文件生成反代IP列表")
+    
+    choice = input("\n请选择功能 [默认: 1]: ").strip()
+    if not choice:
+        choice = "1"
+    
+    if choice == "2":
+        # 优选反代模式
+        return handle_proxy_mode()
+    else:
+        # 常规测速模式
+        return handle_normal_mode()
+
+
+def select_csv_file():
+    """选择CSV文件"""
+    while True:
+        csv_file = input("\n请输入CSV文件路径 [默认: result.csv]: ").strip()
+        if not csv_file:
+            csv_file = "result.csv"
+        
+        if os.path.exists(csv_file):
+            print(f"找到文件: {csv_file}")
+            return csv_file
+        else:
+            print(f"文件不存在: {csv_file}")
+            print("请确保文件路径正确，或先运行常规测速生成result.csv")
+            retry = input("是否重新输入？[Y/n]: ").strip().lower()
+            if retry in ['n', 'no']:
+                return None
+
+
+
+
+
+
+def handle_proxy_mode():
+    """处理优选反代模式"""
+    print("\n优选反代模式")
+    print("=" * 50)
+    print("此功能将从CSV文件中提取IP和端口信息，生成反代IP列表")
+    print("CSV文件格式要求：")
+    print("  - 包含 'IP 地址' 和 '端口' 列")
+    print("  - 或包含 'ip' 和 'port' 列")
+    print("  - 支持逗号分隔的CSV格式")
+    print("=" * 50)
+    
+    # 选择CSV文件
+    csv_file = select_csv_file()
+    
+    if not csv_file:
+        print("未选择有效文件，退出优选反代模式")
+        return None, None, None, None
+    
+    # 生成反代IP列表
+    print(f"\n正在处理CSV文件: {csv_file}")
+    success = generate_proxy_list(csv_file, "ips_ports.txt")
+    
+    if success:
+        print("\n优选反代功能完成！")
+        print("生成的文件:")
+        print("  - ips_ports.txt (反代IP列表)")
+        print("  - 格式: IP:端口 (每行一个)")
+        print("\n使用说明:")
+        print("  - 可直接用于反代配置")
+        print("  - 支持各种代理软件")
+        print("  - 建议定期更新IP列表")
+    else:
+        print("\n优选反代功能失败")
+    
+    return None, None, None, None
+
+
+def handle_normal_mode():
+    """处理常规测速模式"""
     # 询问显示方式
     print("\n显示选项:")
     print("  1. 显示热门机场码")
@@ -446,7 +525,7 @@ def get_user_input():
             display_airport_codes()
             continue
         elif user_input_upper == "HELP":
-            print("\n💡 使用提示:")
+            print("\n使用提示:")
             print("  - 可以输入机场码: HKG、SIN、LAX、NRT")
             print("  - 可以输入城市名称: 香港、新加坡、东京、洛杉矶")
             print("  - 输入 LIST 查看完整列表")
@@ -471,7 +550,7 @@ def get_user_input():
             break
         else:
             print(f"✗ 未找到匹配的城市或机场码: {user_input}")
-            print("  💡 提示: 输入 HELP 查看帮助，输入 LIST 查看完整列表")
+            print("  提示: 输入 HELP 查看帮助，输入 LIST 查看完整列表")
             print("  📝 可以尝试: 香港、新加坡、东京、HKG、SIN、NRT")
     
     # 显示预设配置选项
@@ -506,7 +585,7 @@ def get_user_input():
             break
         elif config_choice == "4":
             # 自定义配置
-            print("\n🔧 自定义配置:")
+            print("\n自定义配置:")
             
             # 获取测试IP数量
             while True:
@@ -540,7 +619,7 @@ def get_user_input():
                         print("✗ 请输入大于等于0的数字")
                         continue
                     if speed_limit_float > 100:
-                        print("⚠️  警告: 速度阈值过高，可能找不到符合条件的IP")
+                        print("警告: 速度阈值过高，可能找不到符合条件的IP")
                         confirm = input("  是否继续？[y/N]: ").strip().lower()
                         if confirm != 'y':
                             continue
@@ -561,7 +640,7 @@ def get_user_input():
                         print("✗ 请输入大于0的数字")
                         continue
                     if time_limit_int > 5000:
-                        print("⚠️  警告: 延迟阈值过高，可能影响使用体验")
+                        print("警告: 延迟阈值过高，可能影响使用体验")
                         confirm = input("  是否继续？[y/N]: ").strip().lower()
                         if confirm != 'y':
                             continue
@@ -576,6 +655,62 @@ def get_user_input():
             print("✗ 无效选择，请输入 1-4")
     
     return cfcolo, dn_count, speed_limit, time_limit
+
+
+def generate_proxy_list(result_file="result.csv", output_file="ips_ports.txt"):
+    """从测速结果生成反代IP列表"""
+    if not os.path.exists(result_file):
+        print(f"未找到测速结果文件: {result_file}")
+        return False
+    
+    try:
+        import csv
+        
+        print(f"\n正在生成反代IP列表...")
+        
+        # 读取CSV文件
+        with open(result_file, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            rows = list(reader)
+        
+        if not rows:
+            print("测速结果文件为空")
+            return False
+        
+        # 生成反代IP列表
+        proxy_ips = []
+        for row in rows:
+            ip = row.get('IP 地址', '').strip()
+            port = row.get('端口', '443').strip()
+            
+            if ip and port:
+                # 提取IP地址（去掉端口部分）
+                if ':' in ip:
+                    ip = ip.split(':')[0]
+                proxy_ips.append(f"{ip}:{port}")
+        
+        # 保存到文件
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for proxy in proxy_ips:
+                f.write(proxy + '\n')
+        
+        print(f"反代IP列表已生成: {output_file}")
+        print(f"共生成 {len(proxy_ips)} 个反代IP")
+        print(f"📝 格式: IP:端口 (如: 1.2.3.4:443)")
+        
+        # 显示前10个IP作为示例
+        if proxy_ips:
+            print(f"\n前10个反代IP示例:")
+            for i, proxy in enumerate(proxy_ips[:10], 1):
+                print(f"  {i:2d}. {proxy}")
+            if len(proxy_ips) > 10:
+                print(f"  ... 还有 {len(proxy_ips) - 10} 个IP")
+        
+        return True
+        
+    except Exception as e:
+        print(f"生成反代IP列表失败: {e}")
+        return False
 
 
 def run_speedtest(exec_name, cfcolo, dn_count, speed_limit, time_limit):
@@ -642,7 +777,14 @@ def main():
     
     # 获取用户输入
     print(f"\n[参数配置]")
-    cfcolo, dn_count, speed_limit, time_limit = get_user_input()
+    result = get_user_input()
+    
+    # 检查是否是优选反代模式
+    if result == (None, None, None, None):
+        print("\n优选反代功能已完成，程序退出")
+        return 0
+    
+    cfcolo, dn_count, speed_limit, time_limit = result
     
     # 运行测速
     print(f"\n[开始测速]")
