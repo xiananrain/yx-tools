@@ -53,7 +53,13 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: 构建可执行文件
+      - name: 构建可执行文件 (Windows)
+        if: matrix.platform == 'windows'
+        run: |
+          pyinstaller --onefile --name CloudflareSpeedTest-${{ matrix.platform }}-${{ matrix.arch }} --clean --console cloudflare_speedtest.py
+
+      - name: 构建可执行文件 (Linux/macOS)
+        if: matrix.platform != 'windows'
         run: |
           pyinstaller --onefile \
             --name CloudflareSpeedTest-${{ matrix.platform }}-${{ matrix.arch }} \
@@ -64,7 +70,7 @@ jobs:
       - name: 重命名文件（Windows）
         if: matrix.platform == 'windows'
         run: |
-          mv dist/CloudflareSpeedTest-${{ matrix.platform }}-${{ matrix.arch }}.exe dist/CloudflareSpeedTest-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }}
+          move dist\CloudflareSpeedTest-${{ matrix.platform }}-${{ matrix.arch }}.exe dist\CloudflareSpeedTest-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }}
 
       - name: 赋予执行权限（Linux/macOS）
         if: matrix.platform != 'windows'
